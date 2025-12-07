@@ -1,5 +1,6 @@
 #include "../includes/ConfigManager.h"
 #include "../includes/Logger.h"
+
 #include <fstream>
 #include <sstream>
 #include <algorithm>
