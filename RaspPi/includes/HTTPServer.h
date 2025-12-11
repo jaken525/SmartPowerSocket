@@ -7,7 +7,10 @@
 #include <string>
 #include <map>
 #include <functional>
+
 #include "RelayController.h"
+#include "SensorManager.h"
+#include "Statistics.h"
 
 class HTTPServer
 {
@@ -31,9 +34,15 @@ private:
                    const std::string& method, 
                    const std::string& url, 
                    int responseCode);
+    std::string handlePowerRequest();
+    std::string handleEnergyRequest();
+    std::string handleStatsRequest(const std::string& period);
+    std::string handleSensorConfigRequest();
+    std::string handleCalibrationRequest(const std::string& params);
     
 public:
-    HTTPServer(RelayController& relayController) : relay(relayController) {};
+    HTTPServer(RelayController& relayController, SensorManager& sensorMgr, Statistics& stats)
+    : relay(relayController), sensorManager(sensorMgr), statistics(stats) {};
     ~HTTPServer();
     
     bool Start(int port = 5000, const std::string& address = "0.0.0.0");
@@ -53,5 +62,7 @@ private:
     bool running {false};
     
     std::map<std::string, std::string> apiKeys;
-    
+
+    SensorManager& sensorManager;
+    Statistics& statistics;
 };

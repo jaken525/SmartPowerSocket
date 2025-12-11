@@ -21,6 +21,7 @@ public:
     
     std::string GetString(const std::string& key, const std::string& defaultValue = "");
     int GetInt(const std::string& key, int defaultValue = 0);
+    float GetFloat(const std::string& key, int defaultValue = 0.0f);
     bool GetBool(const std::string& key, bool defaultValue = false);
     
     void SetString(const std::string& key, const std::string& value);

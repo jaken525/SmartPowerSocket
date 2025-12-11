@@ -165,6 +165,27 @@ int HTTPServer::ProcessRequest(struct MHD_Connection* connection, const std::str
                 responseCode = 500;
             }
         }
+        else if (url == "/power")
+        {
+            responseStr = handlePowerRequest();
+        }
+        else if (url == "/energy")
+        {
+            responseStr = handleEnergyRequest();
+        }
+        else if (url.find("/stats/") == 0)
+        {
+            std::string period = url.substr(7);
+            responseStr = handleStatsRequest(period);
+        }
+        else if (url == "/sensor/config")
+        {
+            responseStr = handleSensorConfigRequest();
+        }
+        else if (url.find("/calibrate") == 0)
+        {
+            responseStr = handleCalibrationRequest(url);
+        }
         else if (url == "/status")
         {
             response["status"] = "success";
@@ -271,4 +292,143 @@ void HTTPServer::AddAPIKey(const std::string& key, const std::string& clientName
         apiKeys[key] = clientName.empty() ? "unnamed_client" : clientName;
         LOG_INFO("Added API key for client: " + apiKeys[key]);
     }
+}
+
+std::string HTTPServer::handlePowerRequest()
+{
+#ifdef RASPBERRY_PI
+    Json::Value response;
+    try
+    {
+        PowerData data = sensorManager.getPowerData();
+        
+        response["status"] = "success";
+        response["data"]["voltage"] = data.voltage;
+        response["data"]["current"] = data.current;
+        response["data"]["power"] = data.power;
+        response["data"]["apparent_power"] = data.apparent_power;
+        response["data"]["reactive_power"] = data.reactive_power;
+        response["data"]["power_factor"] = data.power_factor;
+        response["data"]["frequency"] = data.frequency;
+        response["data"]["energy"] = data.energy;
+        response["data"]["timestamp"] = static_cast<Json::Int64>(data.timestamp);
+        response["data"]["temperature"] = sensorManager.getCpuTemperature();
+        
+        auto stats = sensorManager.getStatistics(300);
+        for (const auto& pair : stats)
+            response["stats"][pair.first] = pair.second;
+    }
+    catch (const std::exception& e)
+    {
+        response["status"] = "error";
+        response["message"] = std::string(e.what());
+    }
+    
+    Json::StreamWriterBuilder builder;
+    return Json::writeString(builder, response);
+#else
+    return "";
+#endif
+}
+
+std::string HTTPServer::handleEnergyRequest()
+{
+#ifdef RASPBERRY_PI
+    Json::Value response;
+    try
+    {
+        EnergyRecord latest = statistics.getLatestRecord();
+        
+        response["status"] = "success";
+        response["data"]["energy"] = latest.energy;
+        response["data"]["cost"] = latest.cost;
+        response["data"]["timestamp"] = static_cast<Json::Int64>(latest.timestamp);
+        
+        auto today = statistics.getTodayStats();
+        auto week = statistics.getWeekStats();
+        auto month = statistics.getMonthStats();
+        
+        Json::Value todayJson;
+        for (const auto& pair : today)
+            todayJson[pair.first] = pair.second;
+        response["stats"]["today"] = todayJson;
+        
+        Json::Value weekJson;
+        for (const auto& pair : week)
+            weekJson[pair.first] = pair.second;
+        response["stats"]["week"] = weekJson;
+        
+        Json::Value monthJson;
+        for (const auto& pair : month)
+            monthJson[pair.first] = pair.second;
+        response["stats"]["month"] = monthJson;
+        
+        float totalEnergy = today["energy_total"];
+        response["environment"]["co2_kg"] = statistics.calculateCO2Emissions(totalEnergy);
+        
+    }
+    catch (const std::exception& e)
+    {
+        response["status"] = "error";
+        response["message"] = std::string(e.what());
+    }
+    
+    Json::StreamWriterBuilder builder;
+    return Json::writeString(builder, response);
+#else
+    return "";
+#endif
+}
+
+std::string HTTPServer::handleStatsRequest(const std::string& period)
+{
+#ifdef RASPBERRY_PI
+    Json::Value response; 
+    try
+    {
+        response["status"] = "success";
+        response["period"] = period;
+        
+        if (period == "today")
+        {
+            auto stats = statistics.getTodayStats();
+            for (const auto& pair : stats)
+                response["data"][pair.first] = pair.second;
+        }
+        else if (period == "yesterday")
+        {
+            auto stats = statistics.getYesterdayStats();
+            for (const auto& pair : stats)
+                response["data"][pair.first] = pair.second;
+        }
+        else if (period == "week")
+        {
+            auto stats = statistics.getWeekStats();
+            for (const auto& pair : stats)
+                response["data"][pair.first] = pair.second;
+        }
+        else if (period == "month")
+        {
+            auto stats = statistics.getMonthStats();
+            for (const auto& pair : stats)
+                response["data"][pair.first] = pair.second;
+        }
+        else
+        {
+            response["status"] = "error";
+            response["message"] = "Invalid period. Use: today, yesterday, week, month";
+        }
+        
+    }
+    catch (const std::exception& e)
+    {
+        response["status"] = "error";
+        response["message"] = std::string(e.what());
+    }
+    
+    Json::StreamWriterBuilder builder;
+    return Json::writeString(builder, response);
+#else
+    return "";
+#endif
 }
