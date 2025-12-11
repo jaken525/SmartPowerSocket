@@ -128,6 +128,22 @@ int ConfigManager::GetInt(const std::string& key, int defaultValue)
     }
 }
 
+float ConfigManager::GetFloat(const std::string& key, int defaultValue)
+{
+    std::string value = GetString(key, "");
+    if (value.empty())
+        return defaultValue;
+
+    try
+    {
+        return std::stof(value);
+    }
+    catch (...)
+    {
+        return defaultValue;
+    }
+}
+
 bool ConfigManager::GetBool(const std::string& key, bool defaultValue)
 {
     std::string value = GetString(key, "");

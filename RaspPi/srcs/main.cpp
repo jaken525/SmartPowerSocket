@@ -46,7 +46,7 @@ int main(int argc, char** argv)
     }
     
     LOG_INFO("Starting Smart Plug Server...");
-
+    
     RelayController relay;
     int gpioPin = config.GetGPIOPin();
     bool simulationMode = config.GetSimulationMode();
@@ -65,9 +65,40 @@ int main(int argc, char** argv)
     else
         relay.TurnOff();
     
-    HTTPServer server(relay);
+    SensorManager sensorManager;
+    SensorConfig sensorConfig;
     
-    int port = config.GetServerPort();
+    sensorConfig.type = static_cast<PowerMonitor::SensorType>(config.GetInt("sensor.type", 0));
+    sensorConfig.bus = config.GetInt("sensor.bus", 1);
+    sensorConfig.address = config.GetInt("sensor.address", 0x40);
+    sensorConfig.calibration = config.GetFloat("sensor.calibration", 1.0);
+    sensorConfig.name = config.GetString("sensor.name", "default");
+    sensorConfig.enabled = config.GetBool("sensor.enabled", false);
+    
+    if (!sensorManager.initialize(sensorConfig))
+        LOG_ERROR("Failed to initialize sensor manager");
+    else
+    {
+        float warningThreshold = config.GetFloat("sensor.warning_threshold", 2000.0f);
+        float criticalThreshold = config.GetFloat("sensor.critical_threshold", 3000.0f);
+        sensorManager.setPowerThresholds(warningThreshold, criticalThreshold);
+        
+        sensorManager.setPowerThresholdCallback(
+            [](float power, float threshold) {
+                LOG_WARNING("Power threshold exceeded: " + 
+                           std::to_string(power) + "W > " + 
+                           std::to_string(threshold) + "W");
+            });
+    }
+    
+    Statistics statistics;
+    float peakTariff = config.GetFloat("tariff.peak", 5.0f);
+    float offpeakTariff = config.GetFloat("tariff.offpeak", 2.0f);
+    statistics.setTariffs(peakTariff, offpeakTariff);
+
+    HTTPServer server(relay, sensorManager, statistics);
+
+        int port = config.GetServerPort();
     std::string address = config.GetServerAddress();
     
     if (!server.Start(port, address))
@@ -78,15 +109,29 @@ int main(int argc, char** argv)
     }
     
     LOG_INFO("Server is running. Press Ctrl+C to stop.");
-    
+
     while (running)
     {
+        static auto lastStatUpdate = std::chrono::steady_clock::now();
+        auto now = std::chrono::steady_clock::now();
+        
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastStatUpdate).count() >= 60)
+        {
+            if (sensorManager.isPowerSensorActive())
+            {
+                PowerData data = sensorManager.getPowerData();
+                statistics.addPowerReading(data.power, 60);
+            }
+            lastStatUpdate = now;
+        }
+        
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     
     LOG_INFO("Shutting down server...");
     server.Stop();
     relay.Shutdown();
+    sensorManager.shutdown();
     
     LOG_INFO("Server stopped successfully");
     
