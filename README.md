@@ -7,7 +7,7 @@
 - Зырянов Ростислав Александрович РИС-22-1б - Frontend android studio/manager
 
 # Доска заданий
-![Проект PowerSocket](https://github.com/users/jaken525/projects/3)
+[Проект PowerSocket](https://github.com/users/jaken525/projects/3)
 
 # Описание проекта
 
