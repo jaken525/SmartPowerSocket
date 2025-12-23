@@ -1,10 +1,10 @@
 # Управление умной розеткой с raspberry pi с интеграцией в андроид приложением
 
 Команда:
-- Поважный Виталий Евгеньевич РИС-22-1б - Backend raspberry pi
-- Карнаухов Михаил Евгеньевич РИС-22-1б - Frontend android studio
-- Вышенская Екатерина Игоревна РИС-22-1б - Backend android studio
-- Зырянов Ростислав Александрович РИС-22-1б - Frontend android studio/manager
+- Поважный Виталий Евгеньевич РИС-22-1б (jaken525) - Backend raspberry pi
+- Карнаухов Михаил Евгеньевич РИС-22-1б (Suduppa) - Frontend android studio
+- Вышенская Екатерина Игоревна РИС-22-1б (kotyasmol) - Backend android studio
+- Зырянов Ростислав Александрович РИС-22-1б (Rostyan18) - Frontend android studio/manager
 
 # Доска заданий
 [Проект PowerSocket](https://github.com/users/jaken525/projects/3)
